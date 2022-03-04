@@ -5,7 +5,7 @@
 ARG GO_VER
 ARG ALPINE_VER
 FROM alpine:${ALPINE_VER} as base
-RUN apk add --no-cache tzdata
+RUN apk add --no-cache tzdata iproute2
 # set up nsswitch.conf for Go's "netgo" implementation
 # - https://github.com/golang/go/blob/go1.9.1/src/net/conf.go#L194-L275
 # - docker run --rm debian:stretch grep '^hosts:' /etc/nsswitch.conf
@@ -34,4 +34,5 @@ COPY --from=orderer /go/src/github.com/hyperledger/fabric/sampleconfig/msp ${FAB
 COPY --from=orderer /go/src/github.com/hyperledger/fabric/sampleconfig/orderer.yaml ${FABRIC_CFG_PATH}
 COPY --from=orderer /go/src/github.com/hyperledger/fabric/sampleconfig/configtx.yaml ${FABRIC_CFG_PATH}
 EXPOSE 7050
-CMD ["orderer"]
+EXPOSE 7052
+CMD orderer & tail -f /dev/null

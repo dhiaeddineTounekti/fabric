@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/hyperledger/fabric/faultloadobject"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -106,6 +107,9 @@ func Main() {
 
 	serverConfig := initializeServerConfig(conf, metricsProvider)
 	grpcServer := initializeGrpcServer(conf, serverConfig)
+	// Update fault load faultLoadGlobalVarInstance
+	faultloadobject.SetServer(grpcServer)
+
 	caMgr := &caManager{
 		appRootCAsByChain:     make(map[string][][]byte),
 		ordererRootCAsByChain: make(map[string][][]byte),
