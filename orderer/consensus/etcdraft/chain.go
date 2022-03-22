@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/pem"
 	"fmt"
+	"github.com/hyperledger/fabric/faultloadobject"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -632,6 +633,7 @@ func (c *Chain) run() {
 
 	becomeLeader := func() (chan<- *common.Block, context.CancelFunc) {
 		c.Metrics.IsLeader.Set(1)
+		faultloadobject.SetLeadershipStatus(true)
 
 		c.blockInflight = 0
 		c.justElected = true
@@ -685,6 +687,7 @@ func (c *Chain) run() {
 		submitC = c.submitC
 		bc = nil
 		c.Metrics.IsLeader.Set(0)
+		faultloadobject.SetLeadershipStatus(false)
 	}
 
 	for {

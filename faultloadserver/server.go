@@ -45,14 +45,6 @@ var (
 	globalWg                    *sync.WaitGroup
 )
 
-func init() {
-	faultLoadServerVarsInstance = &faultLoadServerVars{
-		mux:     createHandlers(),
-		address: "",
-		port:    "7052",
-	}
-}
-
 func createHandlers() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/fault_load/crash", crashFaultHandler)
@@ -62,6 +54,11 @@ func createHandlers() *http.ServeMux {
 
 func Start(wg *sync.WaitGroup) {
 	globalWg = wg
+	faultLoadServerVarsInstance = &faultLoadServerVars{
+		mux:     createHandlers(),
+		address: "",
+		port:    "7052",
+	}
 	listeningAddress := fmt.Sprintf("%s:%s", faultLoadServerVarsInstance.address, faultLoadServerVarsInstance.port)
 	logger.Infof("Fault load server listening on %s", listeningAddress)
 
@@ -86,7 +83,7 @@ func crashFaultHandler(w http.ResponseWriter, r *http.Request) {
 		go func() {
 			defer globalWg.Done()
 
-			commands := fmt.Sprintf("sleep %d && orderer", faultLoadConfig.FaultLoad.FaultDuration)
+			commands := fmt.Sprintf("sleep %d && orderer &>/var/hyperledger/orderer/orderer.log &", faultLoadConfig.FaultLoad.FaultDuration)
 			cmd := exec.Command("/bin/sh", "-c", commands)
 			err := cmd.Start()
 			if err != nil {
@@ -100,10 +97,9 @@ func crashFaultHandler(w http.ResponseWriter, r *http.Request) {
 			logger.Error(err.Error())
 		}
 		return
+	} else {
+		logger.Infof("Ignoring Request intended for %s and I am %s", faultLoadConfig.FaultLoad.Condition, flo.GetLeadershipStatus())
 	}
-
-	logger.Infof("Ignoring Request intended for %s and I am %s", faultLoadConfig.FaultLoad.Condition, flo.GetLeadershipStatus())
-
 }
 
 func communicationFaultHandler(w http.ResponseWriter, r *http.Request) {
@@ -118,10 +114,11 @@ func communicationFaultHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if shouldApplyFault(communicationFaultBody.FaultLoad) {
-		logger.Infof("Crashing server after receiving request from: %s", r.RemoteAddr)
+		logger.Infof("Inducing communication faults after receiving request from: %s", r.RemoteAddr)
 
 		go func() {
-			commands := fmt.Sprintf("tc qdisc add dev eth0 root netem loss %d%% delay %dms", communicationFaultBody.PackageDropRate, communicationFaultBody.CommunicationDelay)
+			commands := fmt.Sprintf("tc qdisc add dev eth0 root netem loss %d%% delay %dms",
+				communicationFaultBody.PackageDropRate, communicationFaultBody.CommunicationDelay)
 			cmd := exec.Command("/bin/sh", "-c", commands)
 			err := cmd.Run()
 			if err != nil {
@@ -137,10 +134,9 @@ func communicationFaultHandler(w http.ResponseWriter, r *http.Request) {
 				logger.Fatal("Error crashing the server", err.Error())
 			}
 		}()
+	} else {
+		logger.Infof("Ignoring Request intended for %s and I am %s", communicationFaultBody.FaultLoad.Condition, flo.GetLeadershipStatus())
 	}
-
-	logger.Infof("Ignoring Request intended for %s and I am %s", communicationFaultBody.FaultLoad.Condition, flo.GetLeadershipStatus())
-
 }
 
 func httpBadRequest(w http.ResponseWriter, err error) {

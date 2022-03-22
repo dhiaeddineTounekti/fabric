@@ -63,9 +63,6 @@ func TestStart(t *testing.T) {
 			ab.RegisterAtomicBroadcastServer(grpcServer.Server(), server1)
 
 			faultloadobject.SetServer(grpcServer)
-			faultloadobject.SetServerConfig(sc)
-			faultloadobject.SetConfig(conf)
-			faultloadobject.SetAbcServer(server1)
 
 			wg := sync.WaitGroup{}
 			wg.Add(1)
